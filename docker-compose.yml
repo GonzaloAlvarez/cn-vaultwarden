@@ -1,0 +1,107 @@
+services:
+  ts-vault:
+    image: tailscale/tailscale:latest
+    hostname: ts-vault
+    cap_add: [ "NET_ADMIN", "SYS_MODULE" ]
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - ts_state:/var/lib/tailscale
+      - ./certs:/staging-certs:ro
+    environment:
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_AUTHKEY=${VAULT_AUTHKEY}
+      - TS_HOSTNAME=vault
+      - TS_ACCEPT_DNS=true
+      - TS_AUTH_ONCE=true
+      - TS_EXTRA_ARGS=--login-server=https://${HEADSCALE_DOMAIN}
+      - SSL_CERT_DIR=${SSL_CERT_DIR}
+    restart: unless-stopped
+
+  vaultwarden:
+    image: vaultwarden/server:latest
+    network_mode: "service:ts-vault"
+    environment:
+      - DOMAIN=https://passwords.${LAB_DOMAIN}
+      - SIGNUPS_ALLOWED=false
+      - ADMIN_TOKEN=${VAULTWARDEN_ADMIN_TOKEN}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_FROM=${SMTP_FROM}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_SECURITY=${SMTP_SECURITY}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+    volumes:
+      - vw_data:/data
+    healthcheck:
+      test: [ "CMD", "wget", "-qO-", "http://127.0.0.1:80/" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      - ts-vault
+    restart: unless-stopped
+
+  consul-register:
+    image: curlimages/curl:8.8.0
+    network_mode: "service:ts-vault"
+    environment:
+      - CONSUL_ADDR=http://infra-vps.${TAILNET_DOMAIN}:8500
+      - SERVICE_NAME=vaultwarden
+      - SERVICE_ID=vaultwarden-vault
+      - SERVICE_HOST=vault.${TAILNET_DOMAIN}
+      - SERVICE_PORT=80
+      - ROUTE_HOST=passwords.${LAB_DOMAIN}
+    command: >
+      sh -c '
+        PAYLOAD="{
+          \"Name\": \"$$SERVICE_NAME\",
+          \"ID\": \"$$SERVICE_ID\",
+          \"Address\": \"$$SERVICE_HOST\",
+          \"Port\": $$SERVICE_PORT,
+          \"Tags\": [
+            \"traefik.enable=true\",
+            \"traefik.http.routers.$$SERVICE_NAME.rule=Host(\\\"$$ROUTE_HOST\\\")\",
+            \"traefik.http.routers.$$SERVICE_NAME.entrypoints=websecure\",
+            \"traefik.http.routers.$$SERVICE_NAME.tls=true\",
+            \"traefik.http.routers.$$SERVICE_NAME.tls.certresolver=dns\"
+          ],
+          \"Check\": {
+            \"TCP\": \"$$SERVICE_HOST:$$SERVICE_PORT\",
+            \"Interval\": \"10s\",
+            \"DeregisterCriticalServiceAfter\": \"2m\"
+          }
+        }";
+        while true; do
+          if curl -sf -X PUT "$$CONSUL_ADDR/v1/agent/service/register" \
+               -H "Content-Type: application/json" \
+               -d "$$PAYLOAD"; then
+            echo "Registered $$SERVICE_ID";
+          else
+            echo "Failed to register $$SERVICE_ID, retrying in 60s...";
+          fi;
+          sleep 60;
+        done
+      '
+    depends_on:
+      - ts-vault
+    restart: unless-stopped
+
+  traefik-lan:
+    image: traefik:v3.6.9
+    network_mode: host
+    command:
+      - "--entrypoints.websecure.address=:443"
+      - "--providers.file.filename=/etc/traefik/dynamic.yml"
+      - "--log.level=INFO"
+    volumes:
+      - ./traefik-lan/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ./certs:/certs:ro
+    restart: unless-stopped
+
+
+volumes:
+  ts_state:
+  vw_data:

@@ -1,0 +1,18 @@
+http:
+  routers:
+    vault-lan:
+      rule: "Host(`${LAN_DOMAIN}`)"
+      service: vault
+      tls: {}
+  services:
+    vault:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:8080"
+
+tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /certs/lan.crt
+        keyFile: /certs/lan.key
