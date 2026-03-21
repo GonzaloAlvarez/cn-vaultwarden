@@ -18,6 +18,8 @@ services:
       - TS_AUTH_ONCE=true
       - TS_EXTRA_ARGS=--login-server=https://${HEADSCALE_DOMAIN}
       - SSL_CERT_DIR=${SSL_CERT_DIR}
+      - TS_USERSPACE=false
+      - TS_TAILSCALED_EXTRA_ARGS=--tun=tailscale0
     restart: unless-stopped
 
   vaultwarden:
@@ -48,7 +50,7 @@ services:
     image: curlimages/curl:8.8.0
     network_mode: "service:ts-vault"
     environment:
-      - CONSUL_ADDR=http://infra-vps.${TAILNET_DOMAIN}:8500
+      - CONSUL_ADDR=http://${INFRA_VPS_TAILNET_IP}:8500
       - SERVICE_NAME=vaultwarden
       - SERVICE_ID=vaultwarden-vault
       - SERVICE_HOST=vault.${TAILNET_DOMAIN}
@@ -56,6 +58,7 @@ services:
       - ROUTE_HOST=passwords.${LAB_DOMAIN}
     command: >
       sh -c '
+        RULE=$(echo "Host(__H__)" | sed "s/__H__/\`$$ROUTE_HOST\`/");
         PAYLOAD="{
           \"Name\": \"$$SERVICE_NAME\",
           \"ID\": \"$$SERVICE_ID\",
@@ -63,7 +66,7 @@ services:
           \"Port\": $$SERVICE_PORT,
           \"Tags\": [
             \"traefik.enable=true\",
-            \"traefik.http.routers.$$SERVICE_NAME.rule=Host(\\\"$$ROUTE_HOST\\\")\",
+            \"traefik.http.routers.$$SERVICE_NAME.rule=$$RULE\",
             \"traefik.http.routers.$$SERVICE_NAME.entrypoints=websecure\",
             \"traefik.http.routers.$$SERVICE_NAME.tls=true\",
             \"traefik.http.routers.$$SERVICE_NAME.tls.certresolver=dns\"
