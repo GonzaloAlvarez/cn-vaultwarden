@@ -92,6 +92,17 @@ services:
       - ts-vault
     restart: unless-stopped
 
+  promtail:
+    image: grafana/promtail:3.4.2
+    network_mode: "service:ts-vault"
+    command: ["-config.file=/etc/promtail/promtail.yml"]
+    volumes:
+      - ./tailnet/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - ts-vault
+    restart: unless-stopped
+
   traefik-lan:
     image: traefik:v3.6.9
     network_mode: host
