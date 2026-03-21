@@ -15,7 +15,7 @@ scrape_configs:
         refresh_interval: 5s
     relabel_configs:
       - source_labels: [__meta_docker_container_label_com_docker_compose_service]
-        regex: vaultwarden
+        regex: vaultwarden.*
         action: keep
       - source_labels: [__meta_docker_container_name]
         regex: /(.*)

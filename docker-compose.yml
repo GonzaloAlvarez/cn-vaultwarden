@@ -22,11 +22,11 @@ services:
       - TS_TAILSCALED_EXTRA_ARGS=--tun=tailscale0
     restart: unless-stopped
 
-  vaultwarden:
+  vaultwarden-lan:
     image: vaultwarden/server:latest
     network_mode: "service:ts-vault"
     environment:
-      - DOMAIN=https://passwords.${LAB_DOMAIN}
+      - DOMAIN=https://${LAN_DOMAIN}
       - SIGNUPS_ALLOWED=false
       - ADMIN_TOKEN=${VAULTWARDEN_ADMIN_TOKEN}
       - SMTP_HOST=${SMTP_HOST}
@@ -46,6 +46,32 @@ services:
       - ts-vault
     restart: unless-stopped
 
+  vaultwarden-lab:
+    image: vaultwarden/server:latest
+    network_mode: "service:ts-vault"
+    environment:
+      - DOMAIN=https://passwords.${LAB_DOMAIN}
+      - ROCKET_PORT=8081
+      - SIGNUPS_ALLOWED=false
+      - ADMIN_TOKEN=${VAULTWARDEN_ADMIN_TOKEN}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_FROM=${SMTP_FROM}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_SECURITY=${SMTP_SECURITY}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+    volumes:
+      - vw_data:/data
+    healthcheck:
+      test: [ "CMD", "wget", "-qO-", "http://127.0.0.1:8081/" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      vaultwarden-lan:
+        condition: service_healthy
+    restart: unless-stopped
+
   consul-register:
     image: curlimages/curl:8.8.0
     network_mode: "service:ts-vault"
@@ -54,7 +80,7 @@ services:
       - SERVICE_NAME=vaultwarden
       - SERVICE_ID=vaultwarden-vault
       - SERVICE_HOST=vault.${TAILNET_DOMAIN}
-      - SERVICE_PORT=80
+      - SERVICE_PORT=8081
       - ROUTE_HOST=passwords.${LAB_DOMAIN}
     command: >
       sh -c '
