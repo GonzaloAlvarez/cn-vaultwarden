@@ -63,8 +63,7 @@ services:
       timeout: 5s
       retries: 3
     depends_on:
-      vaultwarden-lan:
-        condition: service_healthy
+      - vaultwarden-lan
     restart: unless-stopped
 
   consul-register:
