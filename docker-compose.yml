@@ -57,11 +57,6 @@ services:
       - SMTP_PASSWORD=${SMTP_PASSWORD}
     volumes:
       - vw_data:/data
-    healthcheck:
-      test: [ "CMD", "wget", "-qO-", "http://127.0.0.1:8081/" ]
-      interval: 30s
-      timeout: 5s
-      retries: 3
     depends_on:
       - vaultwarden-lan
     restart: unless-stopped
