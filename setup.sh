@@ -40,7 +40,7 @@ set -o allexport
 source .env
 set +o allexport
 
-mkdir -p certs traefik-lan
+mkdir -p certs traefik-lan tailnet/promtail
 
 if [ "$MODE" = "staging" ]; then
   echo "Configuring staging ACME..."
@@ -71,3 +71,6 @@ fi
 
 envsubst '${LAN_DOMAIN}' \
   < traefik-lan/dynamic.yml.tmpl > traefik-lan/dynamic.yml
+
+envsubst '${INFRA_VPS_TAILNET_IP}' \
+  < tailnet/promtail/promtail.yml.tmpl > tailnet/promtail/promtail.yml
