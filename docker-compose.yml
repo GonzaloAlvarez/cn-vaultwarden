@@ -5,8 +5,6 @@ services:
     cap_add: [ "NET_ADMIN", "SYS_MODULE" ]
     devices:
       - /dev/net/tun:/dev/net/tun
-    ports:
-      - "127.0.0.1:8080:80"
     volumes:
       - ts_state:/var/lib/tailscale
       - ./certs:/staging-certs:ro
@@ -24,7 +22,8 @@ services:
 
   vaultwarden-lan:
     image: vaultwarden/server:latest
-    network_mode: "service:ts-vault"
+    ports:
+      - "127.0.0.1:8080:80"
     environment:
       - DOMAIN=https://${LAN_DOMAIN}
       - SIGNUPS_ALLOWED=false
@@ -37,8 +36,6 @@ services:
       - SMTP_PASSWORD=${SMTP_PASSWORD}
     volumes:
       - vw_data:/data
-    depends_on:
-      - ts-vault
     restart: unless-stopped
 
   vaultwarden-lab:
