@@ -115,6 +115,39 @@ services:
       - ts-vault
     restart: unless-stopped
 
+  backup:
+    image: offen/docker-volume-backup:latest
+    volumes:
+      - ./bitwarden:/backup/bitwarden:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - BACKUP_CRON_EXPRESSION=0 3 * * 0
+      - BACKUP_FILENAME=vaultwarden-%Y-%m-%dT%H-%M-%S.tar.gz
+      - BACKUP_RETENTION_DAYS=56
+      - AWS_S3_BUCKET_NAME=${BACKUP_S3_BUCKET}
+      - AWS_ACCESS_KEY_ID=${BACKUP_AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${BACKUP_AWS_SECRET_ACCESS_KEY}
+      - AWS_S3_REGION=${BACKUP_AWS_REGION}
+      - AWS_S3_PATH=vaultwarden/
+      - WEBDAV_URL=${BACKUP_WEBDAV_URL}
+      - WEBDAV_PATH=/vaultwarden/
+      - WEBDAV_USERNAME=${BACKUP_WEBDAV_USER}
+      - WEBDAV_PASSWORD=${BACKUP_WEBDAV_PASSWORD}
+      - NOTIFICATION_URLS=smtp://${SMTP_USERNAME}:${SMTP_PASSWORD}@${SMTP_HOST}:${SMTP_PORT}/?from=${SMTP_FROM}&to=${ALERT_EMAIL}&starttls=yes
+    restart: unless-stopped
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    command:
+      - "--monitor-only"
+      - "--schedule=0 0 3 * * *"
+      - "--notification-url=smtp://${SMTP_USERNAME}:${SMTP_PASSWORD}@${SMTP_HOST}:${SMTP_PORT}/?from=${SMTP_FROM}&to=${ALERT_EMAIL}&starttls=yes"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DOCKER_API_VERSION=1.45
+    restart: unless-stopped
+
   traefik-lan:
     image: traefik:v3.6.9
     network_mode: host
