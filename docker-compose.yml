@@ -35,7 +35,7 @@ services:
       - SMTP_USERNAME=${SMTP_USERNAME}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
     volumes:
-      - vw_data:/data
+      - ./bitwarden:/data
     restart: unless-stopped
 
   vaultwarden-lab:
@@ -53,7 +53,7 @@ services:
       - SMTP_USERNAME=${SMTP_USERNAME}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
     volumes:
-      - vw_data:/data
+      - ./bitwarden:/data
     depends_on:
       - vaultwarden-lan
     restart: unless-stopped
@@ -163,4 +163,3 @@ services:
 
 volumes:
   ts_state:
-  vw_data:
