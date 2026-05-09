@@ -152,8 +152,8 @@ services:
     image: docker:cli
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./:/workspace
-    working_dir: /workspace
+      - ${PWD}:${PWD}
+    working_dir: ${PWD}
     command: >
       sh -c '
         apk add --no-cache docker-cli-compose >/dev/null;
