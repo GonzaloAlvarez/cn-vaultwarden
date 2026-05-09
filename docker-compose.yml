@@ -148,6 +148,31 @@ services:
       - DOCKER_API_VERSION=1.45
     restart: unless-stopped
 
+  ts-vault-watchdog:
+    image: docker:cli
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/workspace
+    working_dir: /workspace
+    command: >
+      sh -c '
+        apk add --no-cache docker-cli-compose >/dev/null;
+        echo "[watchdog] ready, polling ts-vault every 10s";
+        LAST="";
+        while true; do
+          CUR=$$(docker inspect cn-vaultwarden-ts-vault-1 --format "{{.State.StartedAt}}" 2>/dev/null || true);
+          if [ -n "$$CUR" ] && [ -n "$$LAST" ] && [ "$$CUR" != "$$LAST" ]; then
+            echo "[watchdog] ts-vault restarted (was $$LAST, now $$CUR), recreating sidecars";
+            docker compose -p cn-vaultwarden up -d --force-recreate --no-deps consul-register vaultwarden-lab promtail \
+              && echo "[watchdog] sidecars recreated" \
+              || echo "[watchdog] recreate failed";
+          fi;
+          LAST="$$CUR";
+          sleep 10;
+        done
+      '
+    restart: unless-stopped
+
   traefik-lan:
     image: traefik:v3.6.9
     network_mode: host
