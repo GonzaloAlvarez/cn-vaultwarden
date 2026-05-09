@@ -3,3 +3,4 @@ certs/
 traefik-lan/dynamic.yml
 tailnet/promtail/promtail.yml
 bitwarden/
+vw_data

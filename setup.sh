@@ -59,14 +59,12 @@ else
   echo "  docker compose down && docker compose up -d"
 fi
 
-if [ ! -f certs/lan.crt ]; then
-  echo "Generating self-signed certificate for ${LAN_DOMAIN}..."
-  openssl req -x509 -newkey rsa:4096 -keyout certs/lan.key -out certs/lan.crt \
-    -days 3650 -nodes \
-    -subj "/CN=${LAN_DOMAIN}" \
-    -addext "subjectAltName=DNS:${LAN_DOMAIN}"
-  echo "Certificate generated."
-  echo "To avoid browser warnings, install certs/lan.crt as a trusted CA on your devices."
+echo "Fetching root CA from cn-pki..."
+if curl -sf -o certs/root_ca.crt "http://${PKI_IP}/cert/ca.crt"; then
+  echo "Root CA saved to certs/root_ca.crt"
+else
+  echo "WARNING: Could not fetch root CA from http://${PKI_IP}/cert/ca.crt"
+  echo "Traefik LAN will not be able to request certs from step-ca until certs/root_ca.crt is present."
 fi
 
 envsubst '${LAN_DOMAIN}' \

@@ -48,14 +48,14 @@ The script prompts for each variable, generates a self-signed TLS cert for the L
 
 | Variable | Where to get it |
 |---|---|
-| `ROOT_DOMAIN` | Your apex domain (e.g. `gn.al`) |
 | `LAB_DOMAIN` | Internal lab domain (e.g. `lab.gn.al`) |
 | `TAILNET_DOMAIN` | MagicDNS base domain (e.g. `ts.gn.al`) |
 | `HEADSCALE_DOMAIN` | Headscale public hostname (e.g. `hs.gn.al`) |
 | `VAULT_AUTHKEY` | Pre-auth key created in step above with `--tags tag:svc` |
 | `VAULTWARDEN_ADMIN_TOKEN` | Token for the Vaultwarden admin panel at `/admin`. Generate a secure token: `openssl rand -base64 48` |
-| `PI_LAN_IP` | Pi's LAN IP address (e.g. `192.168.1.42`) |
 | `LAN_DOMAIN` | LAN hostname — defaults to `passwords.lan` |
+| `PKI_IP` | LAN IP of the cn-pki machine running step-ca |
+| `ADMIN_EMAIL` | Email for ACME registration with step-ca |
 | `SMTP_*` | Optional — leave blank to disable email |
 
 ### 3. Start services
