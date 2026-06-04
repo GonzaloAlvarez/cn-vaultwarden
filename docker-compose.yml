@@ -173,6 +173,15 @@ services:
     command: >
       sh -c '
         apk add --no-cache docker-cli-compose >/dev/null;
+        echo "[watchdog] cold-start drift probe (consul-register -> VPS Consul)";
+        if ! docker exec cn-vaultwarden-consul-register-1 wget -q -O- --timeout=4 http://100.64.0.1:8500/v1/status/leader >/dev/null 2>&1; then
+          echo "[watchdog] probe failed, force-recreating sidecars to recover netns";
+          docker compose -p cn-vaultwarden up -d --force-recreate --no-deps consul-register vaultwarden-lab promtail node-exporter \
+            && echo "[watchdog] cold-start recreate done" \
+            || echo "[watchdog] cold-start recreate failed";
+        else
+          echo "[watchdog] cold-start probe ok";
+        fi;
         echo "[watchdog] ready, polling ts-vault every 10s";
         LAST="";
         while true; do
