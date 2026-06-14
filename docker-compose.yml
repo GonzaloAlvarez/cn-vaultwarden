@@ -131,6 +131,38 @@ services:
       - ts-vault
     restart: unless-stopped
 
+  # ── LAN-side observability (Slice 4) ────────────────────────────────────
+  # A second node-exporter + promtail bound to the HOST network (no
+  # ts-vault netns) so kaiser's cn-observability can scrape passwords.lan
+  # independently of the tailnet path. Their watchdog-managed siblings
+  # above continue reporting to the VPS Prometheus/Loki via tailnet.
+  # node-exporter-lan binds :9100 inside the host netns; the ts-vault one
+  # binds :9100 inside the tailnet netns — different netns, no conflict.
+  node-exporter-lan:
+    image: prom/node-exporter:latest
+    network_mode: host
+    pid: host
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--web.listen-address=:9100"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    restart: unless-stopped
+
+  promtail-lan:
+    image: grafana/promtail:3.4.2
+    command: ["-config.file=/etc/promtail/promtail.yml"]
+    volumes:
+      - ./lan/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtail_lan_positions:/tmp
+    restart: unless-stopped
+
   backup:
     image: offen/docker-volume-backup:latest
     volumes:
@@ -256,3 +288,4 @@ services:
 volumes:
   ts_state:
   traefik_lan_acme:
+  promtail_lan_positions:

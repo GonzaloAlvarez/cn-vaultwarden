@@ -1,0 +1,34 @@
+# promtail-lan on passwords.lan — ships docker logs to kaiser Loki at
+# 10.1.1.140:3100. Distinct from the tailnet-side promtail (which targets
+# the VPS Loki at INFRA_VPS_TAILNET_IP:3100); both run simultaneously.
+# Tagged stack="cn-vaultwarden", host="passwords", source="lan" so kaiser
+# Grafana can filter cleanly.
+server:
+  http_listen_port: 9081
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://10.1.1.140:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      - source_labels: [__meta_docker_container_name]
+        regex: '/(.*)'
+        target_label: container
+      - source_labels: [__meta_docker_container_label_com_docker_compose_project]
+        target_label: project
+      - source_labels: [__meta_docker_container_label_com_docker_compose_service]
+        target_label: service
+      - target_label: stack
+        replacement: cn-vaultwarden
+      - target_label: host
+        replacement: passwords
+      - target_label: source
+        replacement: lan
