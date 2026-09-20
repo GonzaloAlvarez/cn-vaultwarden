@@ -20,8 +20,19 @@ services:
       - TS_TAILSCALED_EXTRA_ARGS=--tun=tailscale0
     restart: unless-stopped
 
+  # ── Vaultwarden image pin (2026-09-19) ────────────────────────────────
+  # PINNED to 1.37.2, NOT :latest. 1.37.3 (auto-pulled by watchtower on
+  # 2026-09-14) segfaults on every `GET /css/vaultwarden.css` and on /admin:
+  # the process dies (exit 139), docker restarts it ~2s later, and the web
+  # vault never boots — the browser shows a blank page with only the
+  # "Vaultwarden" logo alt-text. Upstream regression:
+  #   https://github.com/dani-garcia/vaultwarden/issues/7754
+  # UNPIN (back to :latest) once a release newer than 1.37.3 fixes #7754.
+  # 1.37.2 -> 1.37.3 added no DB migration (last applied: 20260505120000 on
+  # 2026-07-25), so this downgrade is schema-safe. Both instances share
+  # ./bitwarden/ (one SQLite DB) and MUST stay on the same version.
   vaultwarden-lan:
-    image: vaultwarden/server:latest
+    image: vaultwarden/server:1.37.2
     ports:
       - "127.0.0.1:8080:80"
     environment:
@@ -39,7 +50,7 @@ services:
     restart: unless-stopped
 
   vaultwarden-lab:
-    image: vaultwarden/server:latest
+    image: vaultwarden/server:1.37.2
     network_mode: "service:ts-vault"
     environment:
       - DOMAIN=https://passwords.${LAB_DOMAIN}
